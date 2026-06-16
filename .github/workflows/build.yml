@@ -16,12 +16,19 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: Očista a přestavba systému (Nuke & Pave)
+    - name: Taktika spalene zeme (Scorched Earth)
       run: |
-        # 1. Smažeme všechny problémové složky a stará nastavení
-        rm -rf build-logic convention gradle.properties
+        # 1. Najdeme tvuj kod a schovame ho do bezpeci
+        mkdir -p /tmp/rescue
+        find . -name "MainActivity.kt" -exec cp {} /tmp/rescue/ \;
         
-        # 2. Vytvoříme si vlastní čistý hlavní mozek projektu
+        # 2. Smazeme z projektu UPLNE VSECHNO (krome skryte .github slozky)
+        find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.github' -exec rm -rf {} +
+        
+        # 3. Vygenerujeme cisty a novy Gradle
+        gradle wrapper --gradle-version 8.5
+        
+        # 4. Vytvorime cisty hlavni mozek projektu
         cat << 'EOF' > settings.gradle.kts
         pluginManagement {
             repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -30,11 +37,11 @@ jobs:
             repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
             repositories { google(); mavenCentral() }
         }
-        rootProject.name = "MinimalistPhone"
+        rootProject.name = "MinimalistLauncher"
         include(":app")
         EOF
         
-        # 3. Vytvoříme si vlastní čistý hlavní build
+        # 5. Vytvorime cisty zakladni build
         cat << 'EOF' > build.gradle.kts
         plugins {
             id("com.android.application") version "8.2.0" apply false
@@ -42,7 +49,8 @@ jobs:
         }
         EOF
         
-        # 4. Vytvoříme si vlastní čistý build pro samotnou aplikaci
+        # 6. Vytvorime slozku app a ciste nastaveni pro aplikaci
+        mkdir -p app
         cat << 'EOF' > app/build.gradle.kts
         plugins {
             id("com.android.application")
@@ -74,6 +82,36 @@ jobs:
             implementation("androidx.compose.material:material")
         }
         EOF
+        
+        # 7. Vytvorime nezavisly AndroidManifest (bez ikon a zbytecnosti)
+        mkdir -p app/src/main
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:tools="http://schemas.android.com/tools">
+            <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+            <application
+                android:allowBackup="true"
+                android:label="MinimalistLauncher"
+                android:supportsRtl="true"
+                android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                <activity
+                    android:exported="true"
+                    android:name=".MainActivity">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                        <category android:name="android.intent.category.HOME" />
+                        <category android:name="android.intent.category.DEFAULT" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+        
+        # 8. Vratime tvuj schovany kod na spravne misto
+        mkdir -p app/src/main/java/com/myapplication
+        cp /tmp/rescue/MainActivity.kt app/src/main/java/com/myapplication/
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew

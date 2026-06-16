@@ -10,17 +10,70 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up JDK 21
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '21'
+        java-version: '17'
         distribution: 'temurin'
         
-    - name: The Hacker Kill Switch (Nuke JetBrains & Foojay)
+    - name: Očista a přestavba systému (Nuke & Pave)
       run: |
-        find . -type f -name "*.kts" -exec sed -i 's/.*JETBRAINS.*//g' {} +
-        find . -type f -name "*.kts" -exec sed -i 's/.*foojay.*//g' {} +
-        find . -type f -name "*.kt" -exec sed -i 's/.*JETBRAINS.*//g' {} +
+        # 1. Smažeme všechny problémové složky a stará nastavení
+        rm -rf build-logic convention gradle.properties
+        
+        # 2. Vytvoříme si vlastní čistý hlavní mozek projektu
+        cat << 'EOF' > settings.gradle.kts
+        pluginManagement {
+            repositories { google(); mavenCentral(); gradlePluginPortal() }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories { google(); mavenCentral() }
+        }
+        rootProject.name = "MinimalistPhone"
+        include(":app")
+        EOF
+        
+        # 3. Vytvoříme si vlastní čistý hlavní build
+        cat << 'EOF' > build.gradle.kts
+        plugins {
+            id("com.android.application") version "8.2.0" apply false
+            id("org.jetbrains.kotlin.android") version "1.9.21" apply false
+        }
+        EOF
+        
+        # 4. Vytvoříme si vlastní čistý build pro samotnou aplikaci
+        cat << 'EOF' > app/build.gradle.kts
+        plugins {
+            id("com.android.application")
+            id("org.jetbrains.kotlin.android")
+        }
+        android {
+            namespace = "com.myapplication"
+            compileSdk = 34
+            defaultConfig {
+                applicationId = "com.myapplication"
+                minSdk = 26
+                targetSdk = 34
+                versionCode = 1
+                versionName = "1.0"
+            }
+            buildFeatures { compose = true }
+            composeOptions { kotlinCompilerExtensionVersion = "1.5.7" }
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+            kotlinOptions { jvmTarget = "17" }
+        }
+        dependencies {
+            implementation("androidx.core:core-ktx:1.12.0")
+            implementation("androidx.activity:activity-compose:1.8.2")
+            implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+            implementation("androidx.compose.ui:ui")
+            implementation("androidx.compose.material:material")
+        }
+        EOF
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew

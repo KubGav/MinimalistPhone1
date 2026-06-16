@@ -16,19 +16,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: Taktika spalene zeme (Scorched Earth)
+    - name: Taktika spalene zeme v2 (Spravne poradi)
       run: |
-        # 1. Najdeme tvuj kod a schovame ho do bezpeci
+        # 1. Zachranime tvuj kod do bezpeci
         mkdir -p /tmp/rescue
         find . -name "MainActivity.kt" -exec cp {} /tmp/rescue/ \;
         
         # 2. Smazeme z projektu UPLNE VSECHNO (krome skryte .github slozky)
         find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.github' -exec rm -rf {} +
         
-        # 3. Vygenerujeme cisty a novy Gradle
-        gradle wrapper --gradle-version 8.5
-        
-        # 4. Vytvorime cisty hlavni mozek projektu
+        # 3. NEJDRIV VYTVORIME SOUBORY (aby Gradle nepanikaril)
         cat << 'EOF' > settings.gradle.kts
         pluginManagement {
             repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -41,7 +38,6 @@ jobs:
         include(":app")
         EOF
         
-        # 5. Vytvorime cisty zakladni build
         cat << 'EOF' > build.gradle.kts
         plugins {
             id("com.android.application") version "8.2.0" apply false
@@ -49,7 +45,6 @@ jobs:
         }
         EOF
         
-        # 6. Vytvorime slozku app a ciste nastaveni pro aplikaci
         mkdir -p app
         cat << 'EOF' > app/build.gradle.kts
         plugins {
@@ -83,7 +78,6 @@ jobs:
         }
         EOF
         
-        # 7. Vytvorime nezavisly AndroidManifest (bez ikon a zbytecnosti)
         mkdir -p app/src/main
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
@@ -97,7 +91,8 @@ jobs:
                 android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                 <activity
                     android:exported="true"
-                    android:name=".MainActivity">
+                    android:name=".MainActivity"
+                    android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
                         <category android:name="android.intent.category.LAUNCHER" />
@@ -109,9 +104,11 @@ jobs:
         </manifest>
         EOF
         
-        # 8. Vratime tvuj schovany kod na spravne misto
         mkdir -p app/src/main/java/com/myapplication
         cp /tmp/rescue/MainActivity.kt app/src/main/java/com/myapplication/
+        
+        # 4. AZ TED muzeme nahodit Gradle, protoze uz vidi konfiguracy
+        gradle wrapper --gradle-version 8.5
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
